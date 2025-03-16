@@ -18,7 +18,7 @@
               
                        
 // This is the structure that holds in the thread parameters
-typedef struct {
+typedef struct thread_args {
   int id;
   int *data;
   int start;
@@ -27,73 +27,7 @@ typedef struct {
   int remainder;
   pthread_barrier_t *barrier1;
   pthread_barrier_t *barrier2;
- thread_args;
-}
-
-
-static void *worker(void *arg) {
-  thread_args *args = (thread_args *) arg;
-  int *data = args->data;
-  int start = args->start;
-  int end = args->end;
-  int id = args->id;
-  int base_size = args->base_size;
-  int remainder = args->remainder;
-
-  // Phase 1: Local prefix sum
-  for (int i = start + 1; i < end; i++) {
-      data[i] += data[i - 1];
-  }
-
-  // Synchronize all threads after phase 1
-  pthread_barrier_wait(args->barrier1);
-
-  // Phase 2: Only thread 0 processes
-  if (id == 0) {
-      int total_chunks = NTHREADS;
-      int *last_elements = malloc(total_chunks * sizeof(int));
-      if (!last_elements) {
-          perror("malloc failed");
-          exit(EXIT_FAILURE);
-      }
-
-      // Collect last elements of each chunk
-      for (int t = 0; t < total_chunks; t++) {
-          int chunk_start = t * base_size;
-          int chunk_end = (t == total_chunks - 1) ? chunk_start + base_size + remainder : chunk_start + base_size;
-          last_elements[t] = data[chunk_end - 1];
-      }
-
-      // Compute prefix sum on the collected last elements
-      for (int i = 1; i < total_chunks; i++) {
-          last_elements[i] += last_elements[i - 1];
-      }
-
-      // Update each chunk's last element
-      for (int t = 0; t < total_chunks; t++) {
-          int chunk_start = t * base_size;
-          int chunk_end = (t == total_chunks - 1) ? chunk_start + base_size + remainder : chunk_start + base_size;
-          data[chunk_end - 1] = last_elements[t];
-      }
-
-      free(last_elements);
-  }
-
-  // Synchronize all threads after phase 2
-  pthread_barrier_wait(args->barrier2);
-
-  // Phase 3: Add previous chunk's last element to current chunk (except thread 0)
-  if (id != 0) {
-      int prev_value = data[id * base_size - 1];
-      for (int i = start; i < end - 1; i++) {
-          data[i] += prev_value;
-      }
-  }
-
-  free(arg);
-  return NULL;
-}
-
+};
 
 // Print a helpful message followed by the contents of an array
 // Controlled by the value of SHOWDATA, which should be defined
@@ -204,16 +138,16 @@ void parallelprefixsum(int *data, int n) {
   int base_size = n / NTHREADS;
   int remainder = n % NTHREADS;
 
-  pthread_t threads[NTHREADS];
-  pthread_barrier_t barrier1, barrier2;
+  pthread_t threads[NTHREADS]; //thread handles to init the array of threads of size NTHREADS
+  pthread_barrier_t barrier1, barrier2; //barriers for capturing threads during phase 1 and phase 2
 
   if (pthread_barrier_init(&barrier1, NULL, NTHREADS) != 0 || pthread_barrier_init(&barrier2, NULL, NTHREADS) != 0) {
       perror("pthread_barrier_init failed");
       exit(EXIT_FAILURE);
   }
-
-  for (int i = 0; i < NTHREADS; i++) {
-      thread_args *arg = malloc(sizeof(thread_args));
+  int i;
+  for (i = 0; i < NTHREADS; i++) {
+      thread_args *arg = malloc(sizeof(thread_args));  
       if (!arg) {
           perror("malloc failed");
           exit(EXIT_FAILURE);
