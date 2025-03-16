@@ -91,25 +91,14 @@ static void *worker(void *arg) {
           exit(EXIT_FAILURE);
       }
 
-      // Collect last elements of each chunk
+      // Last element manipulation and summations
       for (int j = 0; j < total_chunks; j++) {
           int chunk_start = j * base_size;
           int chunk_end = (j == total_chunks - 1) ? chunk_start + base_size + remainder : chunk_start + base_size;
           last_elements[j] = data[chunk_end - 1];
+          last_elements[j] += last_elements[j - 1]; // Compute prefix sum on the collected last elements
+          data[chunk_end - 1] = last_elements[j]; // Update each chunk's last element   
       }
-
-      // Compute prefix sum on the collected last elements
-      for (int k = 1; k < total_chunks; k++) {
-          last_elements[k] += last_elements[k - 1];
-      }
-
-      // Update each chunk's last element
-      for (int m = 0; m < total_chunks; m++) {
-          int chunk_start = m * base_size;
-          int chunk_end = (m == total_chunks - 1) ? chunk_start + base_size + remainder : chunk_start + base_size;
-          data[chunk_end - 1] = last_elements[m];
-      }
-
       free(last_elements);
   }
 
