@@ -18,7 +18,7 @@
               
                        
 // This is the structure that holds in the thread parameters
-typedef struct thread_args {
+typedef struct {
   int id;
   int *data;
   int start;
@@ -27,7 +27,7 @@ typedef struct thread_args {
   int remainder;
   pthread_barrier_t *barrier1;
   pthread_barrier_t *barrier2;
-};
+} thread_args;
 
 // Print a helpful message followed by the contents of an array
 // Controlled by the value of SHOWDATA, which should be defined
