@@ -136,7 +136,7 @@ void parallelprefixsum(int *data, int n) {
   }
   int i;
   for (i = 0; i < NTHREADS; i++) {
-      thread_args *arg = malloc(sizeof(thread_args));  
+      thread_args *arg = malloc(sizeof(thread_args));
       if (!arg) {
           perror("malloc failed");
           exit(EXIT_FAILURE);
@@ -205,3 +205,40 @@ int main (int argc, char* argv[]) {
   free(arr1); free(arr2);
   return 0;
 }
+
+/*
+Discussion on implementation of threads using pthread for the algorithm:
+
+
+The logic that I have applied here is pretty straight forward.
+The parallelprefixsum() function called inside the main function 
+houses the pthread methods and a custom function - worker().
+Initially a thread handler array "threads" is created, of size 
+NTHREADS. I also made use of the pthread_barrier_t data type to 
+create barriers, barrier1 and barrier2, to synchronize the threads
+between the phases of the algorithm.
+
+Threads are created using the pthread_create method. The function worker() is 
+passed in it as the start for the threads to work on.
+A struct thread_args, is used to hold the thread arguments which include 
+the thread ID, thread data, start and end indices for each block that 
+the thread caters to, the base_size which is every block's size 
+in the problem, remainder being the number of elements that 
+should be accounted in the last thread. Inside the worker function this 
+struct is used for every individual thread. 
+
+The phase 1 is a local prefix sum and is pretty straightforward.
+pthread_barrier_wait method is used to sync up the threads via the barrier1.
+This waits for all threads and goes to the phase 2 where only thread 0 is
+allowed to do the summation operation for the last element in each block, 
+excluding the first block.
+
+Once that is done, sync the threads this time using barrier2
+and send it to phase 3. Here the final element from the previous block
+is added to each element in the current block of the data array.
+Once this is done, NULL is returned back to parallelprefixsum(). 
+The threads are joined with the main thread using pthread_join method and 
+the barriers are destroyed using pthread_barrier_destroy method. 
+
+Resources are released whenever and wherever necessary using the free() method.
+*/
